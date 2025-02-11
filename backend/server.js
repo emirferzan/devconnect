@@ -31,7 +31,7 @@ app.post('/api/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
         const user = await prisma.user.create({
-            data: { name, email, password: hashedPassword }
+            data: { name, email, password: hashedPassword, role: "user"}
         });
         res.status(201).json({ message: "User registered", user });
     } catch (error) {
@@ -57,6 +57,42 @@ app.post('/api/login', async (req, res) => {
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.json({ token });
 });
+
+app.put('/api/users/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, email } = req.body;
+    
+    try {
+        const updatedUser = await prisma.user.update({
+            where: { id: parseInt(id) },
+            data: { name, email }
+        });
+        res.json(updatedUser);
+    } catch (error) {
+        res.status(400).json({ error: "Could not update user" });
+    }
+});
+
+
+const authenticateToken = (req, res, next) => {
+    const token = req.header('Authorization')?.split(" ")[1]; 
+    if (!token) return res.status(401).json({ error: "Access denied" });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch {
+        res.status(403).json({ error: "Invalid token" });
+    }
+};
+
+app.get('/api/user', authenticateToken, async (req, res) => {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId }, select: { name: true, email: true } });
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json(user);
+});
+
 
 
 const PORT = process.env.PORT || 5000;
