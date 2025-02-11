@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -9,12 +10,33 @@ const Dashboard = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
-    } else {
-      setUser({ name: 'John Doe' }); // Placeholder until we fetch from API
+      return;
     }
+
+    axios.get('http://localhost:5000/api/user', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then((response) => setUser(response.data))
+    .catch(() => {
+      localStorage.removeItem('token');
+      navigate('/login');
+    });
   }, [navigate]);
 
-  return user ? <h2>Welcome, {user.name}!</h2> : <p>Loading...</p>;
+  // Logout function
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    navigate('/login');
+  };
+
+  return user ? (
+    <div>
+      <h2>Welcome, {user.name}!</h2>
+      <button onClick={handleLogout}>Logout</button>
+    </div>
+  ) : (
+    <p>Loading...</p>
+  );
 };
 
 export default Dashboard;
